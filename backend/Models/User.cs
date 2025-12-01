@@ -1,7 +1,6 @@
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using System;
-using System.Collections.Generic;
 
 public class User
 {
@@ -11,9 +10,9 @@ public class User
     public string Username { get; set; }
     public string PasswordHash { get; set; }
     public string FullName { get; set; }
-    public string Avatar { get; set; }
+    public string AvatarUrl { get; set; }
     public string Bio { get; set; }
-    public List<string> Followers { get; set; } = new();
-    public List<string> Following { get; set; } = new();
+    public int Followers { get; set; } = 0;
+    public int Following { get; set; } = 0;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

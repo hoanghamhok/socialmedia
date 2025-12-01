@@ -3,32 +3,44 @@ using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
 using System.Linq;
 using System.IdentityModel.Tokens.Jwt;
+using MongoDB.Driver;
 
 [ApiController]
 [Route("api/[controller]")]
 public class PostsController : ControllerBase
 {
     private readonly MongoDbContext _db;
-    public PostsController(MongoDbContext db) { _db = db; }
-
-    [HttpPost]
-    [Authorize]
-    public IActionResult CreatePost([FromBody] CreatePostDto dto)
+    private readonly CloudinaryService _cloudinaryService;
+    public PostsController(MongoDbContext db, CloudinaryService cloudinaryService)
     {
-        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
-                   ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-        // Alternatively parse "sub" claim
+        _db = db;
+        _cloudinaryService = cloudinaryService;
+    }
+
+    [HttpPost("create")]
+    [Authorize]
+    public async Task<IActionResult> CreatePostWithImage([FromForm] CreatePostWithImageDto dto)
+    {
+        var userId = User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
         if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-        var user = _db.Users.Find(u => u.Id == userId).FirstOrDefault();
-        if (user == null) return Unauthorized();
+        var imageUrls = new List<string>();
+        if (dto.Images != null && dto.Images.Count > 0)
+        {
+            foreach (var file in dto.Images)
+            {
+                var url = await _cloudinaryService.UploadImageAsync(file);
+                if (url != null) imageUrls.Add(url);
+            }
+        }
 
-        var post = new Post {
-            UserId = userId,
-            Username = user.Username,
-            ImageUrl = dto.ImageUrl,
-            Caption = dto.Caption
+        var post = new Post
+        {
+            AuthorId = userId,
+            Caption = dto.Caption,
+            Images = imageUrls
         };
+
         _db.Posts.InsertOne(post);
         return Ok(post);
     }
@@ -38,48 +50,20 @@ public class PostsController : ControllerBase
     public IActionResult GetFeed()
     {
         var userId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-        var me = _db.Users.Find(u => u.Id == userId).FirstOrDefault();
-        var following = me?.Following ?? new System.Collections.Generic.List<string>();
-        // include own posts as well
+        var following = _db.Follows.Find(f => f.FollowerId == userId).ToList().Select(f => f.FollowingId).ToList();
         following.Add(userId);
-        var feed = _db.Posts.Find(p => following.Contains(p.UserId))
+
+        var feed = _db.Posts.Find(p => following.Contains(p.AuthorId))
                             .SortByDescending(p => p.CreatedAt)
                             .Limit(50)
                             .ToList();
+
         return Ok(feed);
-    }
-
-    [HttpPost("{id}/like")]
-    [Authorize]
-    public IActionResult ToggleLike(string id)
-    {
-        var userId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-        var post = _db.Posts.Find(p => p.Id == id).FirstOrDefault();
-        if (post == null) return NotFound();
-        if (post.Likes.Contains(userId)) {
-            post.Likes.Remove(userId);
-        } else {
-            post.Likes.Add(userId);
-        }
-        _db.Posts.ReplaceOne(p => p.Id == id, post);
-        return Ok(post);
-    }
-
-    [HttpPost("{id}/comment")]
-    [Authorize]
-    public IActionResult AddComment(string id, [FromBody] CommentDto dto)
-    {
-        var userId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-        var user = _db.Users.Find(u => u.Id == userId).FirstOrDefault();
-        var post = _db.Posts.Find(p => p.Id == id).FirstOrDefault();
-        if (post == null) return NotFound();
-
-        var comment = new Comment { UserId = userId, Username = user.Username, Text = dto.Text };
-        post.Comments.Add(comment);
-        _db.Posts.ReplaceOne(p => p.Id == id, post);
-        return Ok(post);
     }
 }
 
-public record CreatePostDto(string ImageUrl, string Caption);
-public record CommentDto(string Text);
+public class CreatePostWithImageDto
+{
+    public string Caption { get; set; }
+    public List<IFormFile> Images { get; set; }
+}

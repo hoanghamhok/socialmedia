@@ -1,16 +1,16 @@
-using BCrypt.Net;
-using Microsoft.Extensions.Configuration;
-using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
+using Microsoft.Extensions.Configuration;
 using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
 public class AuthService
 {
     private readonly MongoDbContext _db;
     private readonly IConfiguration _config;
+
     public AuthService(MongoDbContext db, IConfiguration config)
     {
         _db = db;
@@ -20,13 +20,15 @@ public class AuthService
     public User Register(string username, string password, string fullName)
     {
         var existing = _db.Users.Find(u => u.Username == username).FirstOrDefault();
-        if (existing != null) throw new Exception("Username tồn tại");
-        var user = new User {
+        if (existing != null) throw new Exception("Username already exists");
+
+        var user = new User
+        {
             Username = username,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
-            FullName = fullName,
-            Avatar = ""
+            FullName = fullName
         };
+
         _db.Users.InsertOne(user);
         return user;
     }
@@ -37,10 +39,12 @@ public class AuthService
         if (user == null || !BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
             throw new Exception("Invalid credentials");
 
-        var claims = new[] {
+        var claims = new[]
+        {
             new Claim(JwtRegisteredClaimNames.Sub, user.Id),
             new Claim("username", user.Username)
         };
+
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
         var token = new JwtSecurityToken(
@@ -50,6 +54,7 @@ public class AuthService
             expires: DateTime.UtcNow.AddDays(7),
             signingCredentials: creds
         );
+
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }
