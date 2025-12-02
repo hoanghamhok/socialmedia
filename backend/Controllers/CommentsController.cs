@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.IdentityModel.Tokens.Jwt;
 using MongoDB.Driver;
+using System.Security.Claims;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -14,9 +15,31 @@ public class CommentsController : ControllerBase
     [Authorize]
     public IActionResult CreateComment([FromBody] CreateCommentDto dto)
     {
-        var userId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-        if (string.IsNullOrEmpty(userId)) return Unauthorized();
-
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value  // ← Dùng ClaimTypes.NameIdentifier
+            ?? User.FindFirst("sub")?.Value
+            ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        
+        Console.WriteLine($"UserId from token: {userId}");
+        
+        if (string.IsNullOrEmpty(userId))
+        {
+            Console.WriteLine("RETURNING UNAUTHORIZED - No userId");
+            
+            // Debug: In ra tất cả claims
+            Console.WriteLine("=== ALL CLAIMS ===");
+            foreach (var claim in User.Claims)
+            {
+                Console.WriteLine($"{claim.Type} = {claim.Value}");
+            }
+            
+            return Unauthorized();
+        }
+        
+        var authHeader = Request.Headers["Authorization"].ToString();
+        Console.WriteLine($"Auth Header: {authHeader}");
+        
+        Console.WriteLine($"User authenticated: {User.Identity?.IsAuthenticated}");
+        
         var post = _db.Posts.Find(p => p.Id == dto.PostId).FirstOrDefault();
         if (post == null) return NotFound(new { error = "Post not found" });
 

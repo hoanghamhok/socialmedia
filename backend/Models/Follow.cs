@@ -1,7 +1,11 @@
-using System;
+using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
+
 
 public class Follow
 {
+    [BsonId]
+    [BsonRepresentation(BsonType.ObjectId)]
     public string Id { get; set; }
     public string FollowerId { get; set; }
     public string FollowingId { get; set; }

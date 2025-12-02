@@ -9,4 +9,8 @@ export function setAuthToken(token: string | null) {
   else delete API.defaults.headers.common["Authorization"];
 }
 
+//Đăng nhập 
+export const login = (username: string, password: string) => {
+  return API.post("/Auth/login", {username, password});
+}
 export default API;

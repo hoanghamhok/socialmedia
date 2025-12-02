@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
 using System.IdentityModel.Tokens.Jwt;
 using MongoDB.Driver;
+using System.Security.Claims;
+
 
 [ApiController]
 [Route("api/[controller]")]
@@ -15,8 +17,30 @@ public class FollowsController : ControllerBase
     [Authorize]
     public IActionResult Follow(string followingId)
     {
-        var followerId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-        if (string.IsNullOrEmpty(followerId)) return Unauthorized();
+        var followerId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value  // ← Dùng ClaimTypes.NameIdentifier
+            ?? User.FindFirst("sub")?.Value
+            ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        
+        Console.WriteLine($"UserId from token: {followerId}");
+        
+        if (string.IsNullOrEmpty(followerId))
+        {
+            Console.WriteLine("RETURNING UNAUTHORIZED - No userId");
+            
+            // Debug: In ra tất cả claims
+            Console.WriteLine("=== ALL CLAIMS ===");
+            foreach (var claim in User.Claims)
+            {
+                Console.WriteLine($"{claim.Type} = {claim.Value}");
+            }
+            
+            return Unauthorized();
+        }
+        
+        var authHeader = Request.Headers["Authorization"].ToString();
+        Console.WriteLine($"Auth Header: {authHeader}");
+        
+        Console.WriteLine($"User authenticated: {User.Identity?.IsAuthenticated}");
         if (followerId == followingId) return BadRequest(new { error = "Cannot follow yourself" });
 
         var existing = _db.Follows.Find(f => f.FollowerId == followerId && f.FollowingId == followingId).FirstOrDefault();
@@ -35,8 +59,28 @@ public class FollowsController : ControllerBase
     [Authorize]
     public IActionResult Unfollow(string followingId)
     {
-        var followerId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-        if (string.IsNullOrEmpty(followerId)) return Unauthorized();
+         var followerId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value  // ← Dùng ClaimTypes.NameIdentifier
+            ?? User.FindFirst("sub")?.Value
+            ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        
+        Console.WriteLine($"UserId from token: {followerId}");
+        
+        if (string.IsNullOrEmpty(followerId))
+        {
+            Console.WriteLine("RETURNING UNAUTHORIZED - No userId");
+            
+            // Debug: In ra tất cả claims
+            Console.WriteLine("=== ALL CLAIMS ===");
+            foreach (var claim in User.Claims)
+            {
+                Console.WriteLine($"{claim.Type} = {claim.Value}");
+            }
+            
+            return Unauthorized();
+        }
+        
+        var authHeader = Request.Headers["Authorization"].ToString();
+        Console.WriteLine($"Auth Header: {authHeader}");
 
         var result = _db.Follows.DeleteOne(f => f.FollowerId == followerId && f.FollowingId == followingId);
         if (result.DeletedCount == 0) return BadRequest(new { error = "Not following" });
