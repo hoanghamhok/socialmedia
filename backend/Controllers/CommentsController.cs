@@ -62,10 +62,29 @@ public class CommentsController : ControllerBase
     [HttpGet("{postId}")]
     public IActionResult GetComments(string postId)
     {
-        var comments = _db.Comments.Find(c => c.PostId == postId)
-                                   .SortBy(c => c.CreatedAt)
-                                   .ToList();
-        return Ok(comments);
+        // Lấy comment của post
+        var comments = _db.Comments
+            .Find(c => c.PostId == postId)
+            .SortBy(c => c.CreatedAt)
+            .ToList();
+
+        // Lấy danh sách userId để query username
+        var userIds = comments.Select(c => c.UserId).Distinct().ToList();
+        var users = _db.Users
+            .Find(u => userIds.Contains(u.Id))
+            .ToList();
+
+        // Map comment + username
+        var result = comments.Select(c => new {
+            c.Id,
+            c.PostId,
+            c.Content,
+            c.CreatedAt,
+            c.UserId,
+            Username = users.FirstOrDefault(u => u.Id == c.UserId)?.Username
+        });
+
+        return Ok(result);
     }
 }
 

@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using Microsoft.OpenApi.Models; // từ Swashbuckle 10.x
+using Microsoft.OpenApi.Models; 
+using Microsoft.AspNetCore.SignalR;
+using backend.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,7 +13,7 @@ builder.Services.AddSingleton<AuthService>();
 builder.Services.AddSingleton<CloudinaryService>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-
+builder.Services.AddSignalR();
 // JWT
 var key = builder.Configuration["Jwt:Key"];
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -86,6 +88,7 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+app.MapHub<ChatHub>("/hubs/chat");
 app.UseCors("AllowFrontend");
 app.UseSwagger();
 app.UseSwaggerUI();
@@ -95,3 +98,5 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+

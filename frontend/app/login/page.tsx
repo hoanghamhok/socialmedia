@@ -16,7 +16,7 @@ export default function LoginPage() {
       const data = res.data as { token: string; user: any };
       const token = data.token;
 
-      sessionStorage.setItem("token", token);
+      localStorage.setItem("token", token);
       window.location.href = "/";
     } catch (err: any) {
       alert(err?.message || "Login failed");
