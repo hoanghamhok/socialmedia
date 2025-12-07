@@ -17,6 +17,9 @@ export default function LoginPage() {
       const token = data.token;
 
       localStorage.setItem("token", token);
+      localStorage.setItem("userId", data.user.id);
+      localStorage.setItem("username", data.user.username);
+      localStorage.setItem("fullName", data.user.fullName);
       window.location.href = "/";
     } catch (err: any) {
       alert(err?.message || "Login failed");

@@ -73,24 +73,48 @@ export default function ChatSidebar() {
   };
 
   return (
-    <div className="hidden lg:flex flex-col w-80 py-4 sticky top-0 h-screen space-y-2 border-r">
-      <h2 className="text-gray-500 text-sm font-semibold px-2">Chat</h2>
+    <div className="hidden lg:flex flex-col w-72 py-4 sticky top-0 h-screen border-r overflow-y-auto bg-white">
+      {/* Header giống Instagram */}
+      <h2 className="text-center text-base font-semibold border-b pb-2">Direct</h2>
+
+      {/* Danh sách user */}
       {chatUsers.map(user => (
         <div
           key={user.id}
-          className="flex items-center justify-between p-2 hover:bg-gray-100 rounded cursor-pointer"
+          className={`flex items-center justify-between p-2 rounded cursor-pointer transition-all
+            ${openChat?.id === user.id ? "border-l-4 border-pink-500 bg-gray-50" : "hover:bg-gray-100"}`}
           onClick={() => openChatBox(user)}
         >
-          <div className="flex flex-col">
-            <span className="font-semibold">{user.fullName}</span>
-            <span className="text-xs text-gray-400">{user.username}</span>
+          {/* Avatar + Info */}
+          <div className="flex items-center space-x-3">
+            <img
+              src={`https://api.dicebear.com/7.x/initials/svg?seed=${user.username}`}
+              alt={user.fullName}
+              className="w-10 h-10 rounded-full border"
+            />
+            <div className="flex flex-col">
+              <span className="font-medium text-sm">{user.fullName}</span>
+              <span className="text-xs text-gray-400">@{user.username}</span>
+            </div>
           </div>
+
+          {/* Badge unread gradient */}
           {user.unread && user.unread > 0 && (
-            <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{user.unread}</span>
+            <span className="bg-gradient-to-r from-pink-500 via-red-500 to-yellow-500 text-white text-xs px-2 py-0.5 rounded-full">
+              {user.unread}
+            </span>
           )}
         </div>
       ))}
-      {openChat && <ChatBox user={openChat} connection={connection} onClose={() => setOpenChat(null)} />}
+
+      {/* ChatBox */}
+      {openChat && (
+        <ChatBox
+          user={openChat}
+          connection={connection}
+          onClose={() => setOpenChat(null)}
+        />
+      )}
     </div>
   );
 }

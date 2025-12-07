@@ -1,13 +1,46 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, Search, Home, PlusSquare } from "lucide-react";
+import {
+  Heart,
+  MessageCircle,
+  Send,
+  Bookmark,
+  MoreHorizontal,
+  Search,
+  Home,
+  PlusSquare,
+} from "lucide-react";
 import { getFeed, getSuggestedUsers } from "@/services/api";
+import { useRouter } from "next/navigation";
 
 export default function HomePage() {
   const [posts, setPosts] = useState<any[]>([]);
   const [suggested, setSuggested] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const [username, setUsername] = useState<string | null>(null);
+  const [fullName, setFullName] = useState<string | null>(null);
+
+  const router = useRouter();
+
+  // Lấy info user từ localStorage + bảo vệ route
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const token = localStorage.getItem("token");
+    const storedUsername = localStorage.getItem("username");
+    const storedFullName = localStorage.getItem("fullName");
+
+    if (!token) {
+      // Chưa login → đá về /login
+      router.push("/login");
+      return;
+    }
+
+    setUsername(storedUsername);
+    setFullName(storedFullName);
+  }, [router]);
 
   useEffect(() => {
     fetchFeed();
@@ -21,7 +54,10 @@ export default function HomePage() {
       const feed = res.data || [];
       const mapped = feed.map((p: any) => ({
         id: p.id,
-        user: { username: p.author?.username || "Unknown", avatar: p.author?.avatarUrl || "" },
+        user: {
+          username: p.author?.username || "Unknown",
+          avatar: p.author?.avatarUrl || "",
+        },
         image: p.images?.[0] || "",
         likes: p.likesCount || 0,
         isLiked: p.isLiked || false,
@@ -48,19 +84,34 @@ export default function HomePage() {
   }
 
   function handleLike(postId: string) {
-    setPosts(prev =>
-      prev.map(p =>
+    setPosts((prev) =>
+      prev.map((p) =>
         p.id === postId
-          ? { ...p, isLiked: !p.isLiked, likes: p.isLiked ? p.likes - 1 : p.likes + 1 }
+          ? {
+              ...p,
+              isLiked: !p.isLiked,
+              likes: p.isLiked ? p.likes - 1 : p.likes + 1,
+            }
           : p
       )
     );
   }
 
   function handleSave(postId: string) {
-    setPosts(prev =>
-      prev.map(p => (p.id === postId ? { ...p, isSaved: !p.isSaved } : p))
+    setPosts((prev) =>
+      prev.map((p) => (p.id === postId ? { ...p, isSaved: !p.isSaved } : p))
     );
+  }
+
+  // Hàm logout
+  function handleLogout() {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("token");
+      localStorage.removeItem("userId");
+      localStorage.removeItem("username");
+      localStorage.removeItem("fullName");
+    }
+    router.push("/login");
   }
 
   return (
@@ -75,19 +126,45 @@ export default function HomePage() {
         <div className="w-8 h-8 my-4 bg-gray-300 rounded-full cursor-pointer"></div>
       </div>
 
-      {/* Feed chính */}
-      <div className="flex-1 max-w-2xl mx-auto py-8 px-4 space-y-6">
+      {/* Phần chính + header user */}
+      <div className="flex-1 max-w-2xl mx-auto py-6 px-4 space-y-6">
+        {/* Header user + logout */}
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-gray-300 rounded-full" />
+            <div className="flex flex-col">
+              <span className="text-sm font-semibold">
+                {fullName}
+              </span>
+              {username && (
+                <span className="text-xs text-gray-500">@{username}</span>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="text-xs px-3 py-1 rounded-full border border-gray-300 hover:bg-gray-100"
+          >
+            Logout
+          </button>
+        </div>
+
         {/* Stories */}
         <div className="bg-white border border-gray-200 rounded-lg p-4 overflow-x-auto">
           <div className="flex gap-4">
             {["Your Story", "user1", "user2", "user3"].map((username, idx) => (
-              <div key={idx} className="flex flex-col items-center gap-1 cursor-pointer min-w-fit">
+              <div
+                key={idx}
+                className="flex flex-col items-center gap-1 cursor-pointer min-w-fit"
+              >
                 <div className="w-16 h-16 rounded-full p-0.5 bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600">
                   <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
                     <div className="w-14 h-14 bg-gray-300 rounded-full"></div>
                   </div>
                 </div>
-                <span className="text-xs text-gray-600 w-16 text-center truncate">{username}</span>
+                <span className="text-xs text-gray-600 w-16 text-center truncate">
+                  {username}
+                </span>
               </div>
             ))}
           </div>
@@ -96,57 +173,88 @@ export default function HomePage() {
         {/* Posts */}
         {loading && <p>Loading...</p>}
 
-        {!loading && posts.map(post => (
-          <div key={post.id} className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-            {/* Header */}
-            <div className="flex items-center justify-between p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gray-300 rounded-full"></div>
-                <div>
-                  <p className="font-semibold text-sm">{post.user.username}</p>
-                  <p className="text-xs text-gray-500">{post.timeAgo}</p>
+        {!loading &&
+          posts.map((post) => (
+            <div
+              key={post.id}
+              className="bg-white border border-gray-200 rounded-lg overflow-hidden"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gray-300 rounded-full"></div>
+                  <div>
+                    <p className="font-semibold text-sm">
+                      {post.user.username}
+                    </p>
+                    <p className="text-xs text-gray-500">{post.timeAgo}</p>
+                  </div>
                 </div>
-              </div>
-              <MoreHorizontal className="w-5 h-5 text-gray-600" />
-            </div>
-
-            {/* Image */}
-            <div className="w-full aspect-square bg-gray-200">
-              <img src={post.image} className="w-full h-full object-cover" />
-            </div>
-
-            {/* Actions */}
-            <div className="p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <Heart className={`w-6 h-6 cursor-pointer ${post.isLiked ? "fill-red-500 text-red-500" : ""}`} onClick={() => handleLike(post.id)} />
-                  <MessageCircle className="w-6 h-6 cursor-pointer" />
-                  <Send className="w-6 h-6 cursor-pointer" />
-                </div>
-                <Bookmark className={`w-6 h-6 cursor-pointer ${post.isSaved ? "fill-current" : ""}`} onClick={() => handleSave(post.id)} />
+                <MoreHorizontal className="w-5 h-5 text-gray-600" />
               </div>
 
-              <p className="font-semibold text-sm">{post.likes} likes</p>
-              <p className="text-sm"><span className="font-semibold mr-2">{post.user.username}</span>{post.caption}</p>
-              <p className="text-xs text-gray-400">{post.commentsCount} comments</p>
+              {/* Image */}
+              <div className="w-full aspect-square bg-gray-200">
+                <img
+                  src={post.image}
+                  className="w-full h-full object-cover"
+                  alt=""
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <Heart
+                      className={`w-6 h-6 cursor-pointer ${
+                        post.isLiked ? "fill-red-500 text-red-500" : ""
+                      }`}
+                      onClick={() => handleLike(post.id)}
+                    />
+                    <MessageCircle className="w-6 h-6 cursor-pointer" />
+                    <Send className="w-6 h-6 cursor-pointer" />
+                  </div>
+                  <Bookmark
+                    className={`w-6 h-6 cursor-pointer ${
+                      post.isSaved ? "fill-current" : ""
+                    }`}
+                    onClick={() => handleSave(post.id)}
+                  />
+                </div>
+
+                <p className="font-semibold text-sm">{post.likes} likes</p>
+                <p className="text-sm">
+                  <span className="font-semibold mr-2">
+                    {post.user.username}
+                  </span>
+                  {post.caption}
+                </p>
+                <p className="text-xs text-gray-400">
+                  {post.commentsCount} comments
+                </p>
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
       </div>
 
       {/* Sidebar phải */}
       <div className="hidden lg:flex flex-col w-80 ml-6 py-4 sticky top-0 right-10 h-screen space-y-4">
-        <h2 className="text-gray-500 text-sm font-semibold text-center">Gợi ý cho bạn</h2>
-        {suggested.map(user => (
+        <h2 className="text-gray-500 text-sm font-semibold text-center">
+          Gợi ý cho bạn
+        </h2>
+        {suggested.map((user) => (
           <div key={user.id} className="flex items-center justify-between">
             <div className="flex flex-col items-start gap-0.5">
               <p className="text-sm font-semibold">{user.fullName}</p>
               <p className="text-xs text-gray-400">{user.username}</p>
             </div>
             <button
-              className={`text-blue-500 text-sm font-semibold ${user.isFollowing ? "opacity-50 cursor-not-allowed" : ""}`}
+              className={`text-blue-500 text-sm font-semibold ${
+                user.isFollowing ? "opacity-50 cursor-not-allowed" : ""
+              }`}
               disabled={user.isFollowing}
-              onClick={() => user.isFollowing = true}
+              onClick={() => (user.isFollowing = true)}
             >
               {user.isFollowing ? "Đã follow" : "Follow"}
             </button>

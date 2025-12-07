@@ -8,9 +8,9 @@ namespace backend.Hubs
 {
     private readonly IMongoCollection<Message> _messages;
 
-    public ChatHub(IMongoDatabase db)
+    public ChatHub(MongoDbContext db)
     {
-        _messages = db.GetCollection<Message>("Messages");
+        _messages = db.Messages;
     }
 
     public async Task SendMessage(string senderId, string receiverId, string content)

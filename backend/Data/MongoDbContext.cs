@@ -16,4 +16,5 @@ public class MongoDbContext
     public IMongoCollection<Comment> Comments => _database.GetCollection<Comment>("comments");
     public IMongoCollection<Follow> Follows => _database.GetCollection<Follow>("follows");
     public IMongoCollection<Like> Likes => _database.GetCollection<Like>("likes");
+    public IMongoCollection<Message> Messages => _database.GetCollection<Message>("messages");
 }
